@@ -2,7 +2,6 @@ from flask import jsonify, request, url_for
 from api import db, app
 from models import User, Link, Visitor
 from errors import bad_request, not_found
-import urllib.request, json
 
 
 @app.route('/login', methods=['POST'])
@@ -17,14 +16,7 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        return {'token': username},200
-
-    # # SIMPLE AUTH APPROACH
-    # data = request.get_json() or {}
-    # if data['username']+'@' != data['password']:
-    #     return bad_request('Invalid password')
-    # username = data['username']
-    # return {'token':username},200    
+        return {'token': username},200 
 
 
 @app.route('/dashboard', methods=['GET'])
@@ -110,11 +102,6 @@ def update_visitor(username, link_name):
     ip = request.headers.get('x-client-IP')
     country = request.headers.get('x-client-country')
 
-    # url = "https://api.country.is"
-    # response = urllib.request.urlopen(url)
-    # data = response.read()
-    # ip_dict = json.loads(data)
-
     # Check if a visitor has already visited the link
     new_visitor = True
     for visitor in Visitor.query.all():
@@ -132,43 +119,4 @@ def update_visitor(username, link_name):
     db.session.commit()
     response = jsonify(visitor.to_dict())
     response.status_code = 201
-    # response.headers['Location'] = url_for('api.get_user', id=user.id)
     return response
-
-# @app.route('/dashboard/<username>')
-# @basic_auth.login_required
-# def dashboard(username):
-#     user = User.query.filter_by(username=username).first()
-#     user_dict = user.to_dict() or {}
-#     if user:
-#         for l in user.links:
-#             link = Link.query.filter_by(link_name=l.link_name).first()
-#             if link:
-#                 visitors = link.visitors
-#                 for v in visitors:
-#                     visitor = Visitor.query.filter_by(id=v.id).first()
-#                 visitor_dict = visitor.to_dict()
-#     user_dict['visitors'] = visitor_dict or {}
-#     return user_dict
-
-
-# @app.route('/dashboard/<username>/create_link', methods=['POST'])
-# @basic_auth.login_required
-# def create_link(username):
-#     user = User.query.filter_by(username=username).first()
-#     data = request.get_json() or {}
-#     if 'link_name' not in data:
-#         return bad_request('Link_name missing')
-
-#     for l in user.links:
-#         if l.link_name == data['link_name']:
-#             return bad_request('Link_name already exists')
-    
-#     link = Link()
-#     link.from_dict(data, user)
-#     db.session.add(link)
-#     db.session.commit()
-#     response = jsonify(link.to_dict())
-#     response.status_code = 201
-#     response.headers['Location'] = url_for('update_visitor', username=user.username, link_name=link.link_name)
-#     return response
