@@ -1,7 +1,7 @@
 from flask import jsonify, request, url_for
 from api import db, app
 from models import User, Link, Visitor
-from errors import bad_request, not_found
+from errors import bad_request, not_found, unauthenticated
 
 
 @app.route('/login', methods=['POST'])
@@ -16,7 +16,8 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        return {'token': username},200 
+        return {'token': username},200
+    return unauthenticated('Invalid username or password')
 
 
 @app.route('/dashboard', methods=['GET'])
