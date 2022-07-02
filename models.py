@@ -60,7 +60,7 @@ class Link(db.Model):
                 else:
                     country_count[v.country] += v.total_visits
         link['total_visitor_count'] = total_visitor_count
-        link['most_visited_country'] = ''
+        link['most_visited_country'] = 'NA'
         if country_count:
             link['most_visited_country'] = max(country_count, key=country_count.get)
         return link
@@ -75,6 +75,7 @@ class Link(db.Model):
     
 class Visitor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.String(64))
     ip = db.Column(db.String(64))
     first_visit = db.Column(db.DateTime, default=datetime.utcnow)
     last_visit = db.Column(db.DateTime, default=datetime.utcnow)
@@ -100,12 +101,13 @@ class Visitor(db.Model):
         }
         return visitor
     
-    def from_dict(self, data, link_id=None, new_visitor=False):
+    def from_dict(self, uuid=None, ip=None, country=None, link_id=None, new_visitor=False):
         if new_visitor:
-            self.ip = data['ip']
+            self.uuid = uuid
+            self.ip = ip
             self.first_visit = date.today()
             self.total_visits = 0
-            self.country = data['country']
+            self.country = country
             self.link_id = link_id
             ua_info = self.get_ua_info()
             self.browser = ua_info['browser']

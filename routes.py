@@ -3,39 +3,28 @@ from api import db, app
 from models import User, Link, Visitor
 from errors import bad_request, not_found
 import urllib.request, json
-from urllib.parse import unquote
-
-# encoded_array = "[%225%22%2C%2210%22%2C%221%22]"
-
-# from auth import basic_auth
-# from auth import verify_password
 
 
 @app.route('/login', methods=['POST'])
-def login():
-    
-    # data = json.loads(request.data) or {}
-
-    # decoded_string = unquote(request.data)
-    # data = json.loads(decoded_string)
-    # if 'username' not in data or 'password' not in data:
-    #     return bad_request('Please pass username & password')
-    
-    # username = data['username']
-    # password = data['password']
-    
-    # user = User.query.filter_by(username=username).first()
-    # if user and user.check_password(password):
-    #     return {'token': user.username},200
-
+def login():    
+    # BASIC AUTH
     data = request.get_json() or {}
-    if data['username']+'@' != data['password']:
-        return bad_request('Invalid password')
+    if 'username' not in data or 'password' not in data:
+        return bad_request('Please pass username & password')
+    
     username = data['username']
-    # user = User.query.filter_by(username=username).first()
-    # if not user:
-        # create user
-    return {'token':username},200
+    password = data['password']
+    
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        return {'token': username},200
+
+    # # SIMPLE AUTH APPROACH
+    # data = request.get_json() or {}
+    # if data['username']+'@' != data['password']:
+    #     return bad_request('Invalid password')
+    # username = data['username']
+    # return {'token':username},200    
 
 
 @app.route('/dashboard', methods=['GET'])
@@ -44,7 +33,6 @@ def dashboard():
 
 
 @app.route('/create_link', methods=['POST'])
-# @basic_auth.login_required
 def create_link():
     data = request.get_json() or {}
     username = request.headers.get('x-auth-user')
@@ -65,13 +53,11 @@ def create_link():
 
 
 @app.route('/mylinks', methods=['GET'])
-# @basic_auth.login_required
 def mylinks():
     username = request.headers.get('x-auth-user')
     user = User.query.filter_by(username=username).first()
     user_links = {}
     if user:
-        link_count = user.links.count()
         count = 1
         for l in user.links:
             link = Link.query.filter_by(link_name=l.link_name).first()
@@ -82,7 +68,6 @@ def mylinks():
 
 
 @app.route('/link_info/<int:link_id>', methods=['GET'])
-# @basic_auth.login_required
 def link_info(link_id):
     username = request.headers.get('x-auth-user')
     user = User.query.filter_by(username=username).first()
@@ -113,32 +98,36 @@ def update_visitor(username, link_name):
     if not user:
         return not_found('User not found')
     
-    link_not_found = 1
+    link_not_found = True
     for l in user.links.all():
         if l.link_name == link_name:
-            link_not_found = 0
+            link_not_found = False
             break
     if link_not_found:
         return not_found('Link not found')
     
-    url = "https://api.country.is"
-    response = urllib.request.urlopen(url)
-    data = response.read()
-    ip_dict = json.loads(data)
+    uuid = request.headers.get('x-client-id')
+    ip = request.headers.get('x-client-IP')
+    country = request.headers.get('x-client-country')
+
+    # url = "https://api.country.is"
+    # response = urllib.request.urlopen(url)
+    # data = response.read()
+    # ip_dict = json.loads(data)
 
     # Check if a visitor has already visited the link
     new_visitor = True
     for visitor in Visitor.query.all():
-        if visitor.link_id == l.id and visitor.ip == ip_dict['ip']:
+        if visitor.link_id == l.id and visitor.uuid == uuid:
             new_visitor = False
             break
     
     if new_visitor:
         visitor = Visitor()
-        visitor.from_dict(ip_dict, l.id, new_visitor=True)
+        visitor.from_dict(uuid, ip, country, l.id, new_visitor=True)
         db.session.add(visitor)
     else:
-        visitor.from_dict(ip_dict)
+        visitor.from_dict()
     
     db.session.commit()
     response = jsonify(visitor.to_dict())
